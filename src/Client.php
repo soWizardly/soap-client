@@ -1,6 +1,7 @@
 <?php
 namespace Khatfield\SoapClient;
 
+use Khatfield\SoapClient\Header\PackageVersionHeader;
 use Khatfield\SoapClient\Soap\SoapClient;
 use Khatfield\SoapClient\Result;
 use Khatfield\SoapClient\Event;
@@ -18,21 +19,24 @@ class Client extends AbstractHasDispatcher implements ClientInterface
      *
      * @var string
      */
-    const SOAP_NAMESPACE = 'urn:enterprise.soap.sforce.com';
+    const ENTERPRISE_NAMESPACE = 'urn:enterprise.soap.sforce.com';
+    const PARTNER_NAMESPACE  = 'urn:partner.soap.sforce.com';
+
+    protected $namespace;
 
     /**
      * SOAP session header
      *
      * @var \SoapHeader
      */
-    protected $sessionHeader;
+    protected $session_header = false;
 
     /**
      * PHP SOAP client for interacting with the Salesforce API
      *
      * @var SoapClient
      */
-    protected $soapClient;
+    protected $soap_client;
 
     /**
      * @var string
@@ -54,29 +58,53 @@ class Client extends AbstractHasDispatcher implements ClientInterface
      *
      * @var array
      */
-    protected $types = array();
+    protected $types = [];
+
+    /**
+     * Soap headers to set
+     *
+     * @var array
+     */
+    protected $headers = [];
 
     /**
      * Login result
      *
      * @var Result\LoginResult
      */
-    protected $loginResult;
+    protected $login_result;
 
     /**
      * Construct Salesforce SOAP client
      *
-     * @param SoapClient $soapClient SOAP client
-     * @param string     $username   Salesforce username
-     * @param string     $password   Salesforce password
-     * @param string     $token      Salesforce security token
+     * @param SoapClient $soap_client SOAP client
+     * @param string     $username    Salesforce username
+     * @param string     $password    Salesforce password
+     * @param string     $token       Salesforce security token
+     * @param string     $type        Partner or Enterprise connection
      */
-    public function __construct(SoapClient $soapClient, $username, $password, $token)
+    public function __construct(SoapClient $soap_client, $username, $password, $token)
     {
-        $this->soapClient = $soapClient;
-        $this->username = $username;
-        $this->password = $password;
-        $this->token = $token;
+        $this->soap_client = $soap_client;
+        $this->username    = $username;
+        $this->password    = $password;
+        $this->token       = $token;
+
+    }
+
+    public function addHeader($header)
+    {
+        $class = get_class($header);
+        if($class !== false){
+            if($class == 'PackageVersion'){
+                if(!array_key_exists('PackageVersionHeader', $this->headers)){
+                    $this->headers['PackageVersionHeader'] = [];
+                }
+                $this->headers['PackageVersionHeader'][] = $header;
+            } else {
+                $this->headers[$class] = $header;
+            }
+        }
     }
 
     /**
@@ -206,12 +234,14 @@ class Client extends AbstractHasDispatcher implements ClientInterface
      */
     public function doLogin($username, $password, $token)
     {
-        $result = $this->soapClient->login(
+        $this->setSoapHeaders('login');
+        $result = $this->soap_client->login(
             array(
                 'username'  => $username,
                 'password'  => $password.$token
             )
         );
+
         $this->setLoginResult($result->result);
 
         return $result->result;
@@ -232,11 +262,11 @@ class Client extends AbstractHasDispatcher implements ClientInterface
      */
     public function getLoginResult()
     {
-        if (null === $this->loginResult) {
+        if (null === $this->login_result) {
             $this->login($this->username, $this->password, $this->token);
         }
 
-        return $this->loginResult;
+        return $this->login_result;
     }
 
     /**
@@ -245,7 +275,7 @@ class Client extends AbstractHasDispatcher implements ClientInterface
     public function logout()
     {
         $this->call('logout');
-        $this->sessionHeader = null;
+        $this->session_header = null;
         $this->setSessionId(null);
     }
 
@@ -277,7 +307,7 @@ class Client extends AbstractHasDispatcher implements ClientInterface
                 $this->createSObject($mergeRequest->masterRecord, $type),
                 SOAP_ENC_OBJECT,
                 $type,
-                self::SOAP_NAMESPACE
+                $this->namespace
             );
         }
 
@@ -352,12 +382,24 @@ class Client extends AbstractHasDispatcher implements ClientInterface
      */
     public function search($searchString)
     {
-        return $this->call(
+        $records = [];
+        $result = $this->call(
             'search',
             array(
                 'searchString'  => $searchString
             )
         );
+
+        //fix the odd xml layout
+        if(!empty($result->searchRecords)){
+            foreach($result->searchRecords as $record){
+                $records[] = $record->record;
+            }
+        }
+
+        $result->searchRecords = $records;
+
+        return $result;
     }
 
     /**
@@ -472,7 +514,7 @@ class Client extends AbstractHasDispatcher implements ClientInterface
                 $sObject->fieldsToNull = $fieldsToNullVar;
             }
 
-            $soapVar = new \SoapVar($sObject, SOAP_ENC_OBJECT, $type, self::SOAP_NAMESPACE);
+            $soapVar = new \SoapVar($sObject, SOAP_ENC_OBJECT, $type, $this->namespace);
             $soapVars[] = $soapVar;
         }
 
@@ -544,24 +586,26 @@ class Client extends AbstractHasDispatcher implements ClientInterface
      *
      * @return array | \Traversable An empty array or a result object, such
      *                              as QueryResult, SaveResult, DeleteResult.
+     *
+     * @throws \SoapFault;
      */
     protected function call($method, array $params = array())
     {
         $this->init();
 
         // Prepare headers
-        $this->soapClient->__setSoapHeaders($this->getSessionHeader());
+        $this->setSoapHeaders($method);
 
-        $requestEvent = new Event\RequestEvent($method, $params);
-        $this->dispatch(Events::REQUEST, $requestEvent);
+        $request_event = new Event\RequestEvent($method, $params);
+        $this->dispatch(Events::REQUEST, $request_event);
 
         try {
-            $result = $this->soapClient->$method($params);
-        } catch (\SoapFault $soapFault) {
-            $faultEvent = new Event\FaultEvent($soapFault, $requestEvent);
-            $this->dispatch(Events::FAULT, $faultEvent);
+            $result = $this->soap_client->$method($params);
+        } catch (\SoapFault $soap_fault) {
+            $fault_event = new Event\FaultEvent($soap_fault, $request_event);
+            $this->dispatch(Events::FAULT, $fault_event);
 
-            throw $soapFault;
+            throw $soap_fault;
         }
 
         // No result e.g. for logout, delete with empty array
@@ -571,7 +615,7 @@ class Client extends AbstractHasDispatcher implements ClientInterface
 
         $this->dispatch(
             Events::RESPONSE,
-            new Event\ResponseEvent($requestEvent, $result->result)
+            new Event\ResponseEvent($request_event, $result->result)
         );
 
         return $result->result;
@@ -592,16 +636,32 @@ class Client extends AbstractHasDispatcher implements ClientInterface
     /**
      * Set soap headers
      *
-     * @param array $headers
+     * @param string $call
      */
-    protected function setSoapHeaders(array $headers)
+    protected function setSoapHeaders($call)
     {
-        $soapHeaderObjects = array();
-        foreach ($headers as $key => $value) {
-            $soapHeaderObjects[] = new \SoapHeader(self::SOAP_NAMESPACE, $key, $value);
+        $headers   = [];
+        if($call != 'login'){
+            //set the session header
+            $headers[] = $this->getSessionHeader();
         }
 
-        $this->soapClient->__setSoapHeaders($soapHeaderObjects);
+        if(!empty($this->headers)){
+            foreach($this->headers as $class => $option){
+                $header = null;
+                if($class == 'PackageVersionHeader'){
+                    $header  = new PackageVersionHeader($option);
+                } else {
+                    $header = $option;
+                }
+
+                if(!is_null($header) && $header->validFor($call)){
+                    $headers[] = $header->getHeader($this->namespace);;
+                }
+            }
+        }
+
+        $this->soap_client->__setSoapHeaders($headers);
     }
 
     /**
@@ -611,30 +671,30 @@ class Client extends AbstractHasDispatcher implements ClientInterface
      */
     protected function getSessionHeader()
     {
-        return $this->sessionHeader;
+        return $this->session_header;
     }
 
     /**
      * Save session id to SOAP headers to be used on subsequent requests
      *
-     * @param string $sessionId
+     * @param string $session_id
      */
-    protected function setSessionId($sessionId)
+    protected function setSessionId($session_id)
     {
-        $this->sessionHeader = new \SoapHeader(
-            self::SOAP_NAMESPACE,
+        $this->session_header = new \SoapHeader(
+            $this->namespace,
             'SessionHeader',
-            array(
-                'sessionId' => $sessionId
-            )
+            [
+                'sessionId' => $session_id
+            ]
         );
     }
 
-    protected function setLoginResult(Result\LoginResult $loginResult)
+    protected function setLoginResult(Result\LoginResult $login_result)
     {
-        $this->loginResult = $loginResult;
-        $this->setEndpointLocation($loginResult->getServerUrl());
-        $this->setSessionId($loginResult->getSessionId());
+        $this->login_result = $login_result;
+        $this->setEndpointLocation($login_result->getServerUrl());
+        $this->setSessionId($login_result->getSessionId());
     }
 
     /**
@@ -645,7 +705,7 @@ class Client extends AbstractHasDispatcher implements ClientInterface
      */
     protected function setEndpointLocation($location)
     {
-        $this->soapClient->__setLocation($location);
+        $this->soap_client->__setLocation($location);
     }
 
     /**
@@ -663,7 +723,7 @@ class Client extends AbstractHasDispatcher implements ClientInterface
         $sObject = new \stdClass();
 
         foreach (get_object_vars($object) as $field => $value) {
-            $type = $this->soapClient->getSoapElementType($objectType, $field);
+            $type = $this->soap_client->getSoapElementType($objectType, $field);
             if ($field != 'Id' && !$type) {
                 continue;
             }

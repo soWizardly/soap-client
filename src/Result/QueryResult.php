@@ -9,7 +9,7 @@ class QueryResult
 {
     protected $done;
     protected $queryLocator;
-    protected $records = array();
+    protected $records = [];
     protected $size;
 
     /**
@@ -37,6 +37,18 @@ class QueryResult
     }
 
     /**
+     * @param SObject[] $records
+     *
+     * @return $this
+     */
+    public function setRecords($records)
+    {
+        $this->records = $records;
+
+        return $this;
+    }
+
+    /**
      * @return int
      */
     public function getSize()
@@ -46,8 +58,12 @@ class QueryResult
 
     public function getRecord($index)
     {
+        $return = null;
+
         if (isset($this->records[$index])) {
-            return $this->records[$index];
+            $return = $this->records[$index];
         }
+
+        return $return;
     }
 }

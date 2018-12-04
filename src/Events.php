@@ -3,8 +3,8 @@ namespace Khatfield\SoapClient;
 
 final class Events
 {
-    const REQUEST    = 'Khatfield.soap_client.request';
-    const RESPONSE   = 'Khatfield.soap_client.response';
-    const FAULT      = 'Khatfield.soap_client.fault';
+    const REQUEST    = 'khatfield.soap_client.request';
+    const RESPONSE   = 'khatfield.soap_client.response';
+    const FAULT      = 'khatfield.soap_client.fault';
 }
 
