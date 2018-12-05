@@ -157,6 +157,7 @@ class RecordIterator implements \SeekableIterator, \Countable
     /**
      * Query Salesforce for more records and rewind iterator
      *
+     * @throws \SoapFault
      */
     protected function queryMore()
     {
@@ -177,6 +178,7 @@ class RecordIterator implements \SeekableIterator, \Countable
 
     /**
      * @param int $position
+     * @return object|SObject
      */
     public function seek($position)
     {

@@ -1,6 +1,7 @@
 <?php
 namespace Khatfield\SoapClient;
 
+use Khatfield\SoapClient\Exception\SaveException;
 use Khatfield\SoapClient\Result;
 
 /**
@@ -15,6 +16,8 @@ interface ClientInterface
      *
      * @param array $leadConverts LeadConvert[]
      *
+     * @throws \SoapFault
+     *
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_convertlead.htm
      */
     public function convertLead(array $leadConverts);
@@ -24,6 +27,9 @@ interface ClientInterface
      *
      * @param array  $objects    Array of Salesforce objects
      * @param string $objectType Object type, e.g., account or contact
+     *
+     * @throws \SoapFault
+     * @throws SaveException
      *
      * @return Result\SaveResult[]
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_create.htm
@@ -35,6 +41,9 @@ interface ClientInterface
      *
      * @param array $ids Salesforce object IDs
      *
+     * @throws \SoapFault
+     * @throws SaveException
+     *
      * @return Result\DeleteResult[]
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_delete.htm
      */
@@ -45,6 +54,8 @@ interface ClientInterface
      *
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_describeglobal.htm
      *
+     * @throws \SoapFault
+     *
      * @return Result\DescribeGlobalResult
      */
     public function describeGlobal();
@@ -52,8 +63,9 @@ interface ClientInterface
     /**
      * Describes metadata (field list and object properties) for the specified object or array of objects
      *
-     *
      * @param array $objectNames
+     *
+     * @throws \SoapFault
      *
      * @return Result\DescribeSObjectResult[]
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_describesobjects.htm
@@ -64,12 +76,17 @@ interface ClientInterface
      * Returns information about the standard and custom apps available to the
      * logged-in
      *
+     * @throws \SoapFault
+     *
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_invalidatesessions.htm
      */
     public function describeTabs();
 
     /**
      * Delete records from the recycle bin immediately
+     *
+     * @throws \SoapFault
+     * @throws SaveException
      *
      * @param array $ids Object ids
      */
@@ -82,6 +99,8 @@ interface ClientInterface
      * @param string    $objectType Object type
      * @param \DateTime $startDate  Start date
      * @param \DateTime $endDate    End date
+     *
+     * @throws \SoapFault
      *
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_getdeleted.htm
      * @return Result\GetDeletedResult
@@ -96,6 +115,8 @@ interface ClientInterface
      * @param \DateTime $startDate  Start date
      * @param \DateTime $endDate    End date
      *
+     * @throws \SoapFault
+     *
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_getupdated.htm
      * @return Result\GetUpdatedResult
      */
@@ -105,6 +126,8 @@ interface ClientInterface
      * Ends one or more sessions specified by a sessionId
      *
      * @param array $sessionIds Array of session ids
+     *
+     * @throws \BadMethodCallException
      *
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_invalidatesessions.htm
      */
@@ -117,6 +140,8 @@ interface ClientInterface
      * @param string $password Salesforce password
      * @param string $token    Salesforce security token
      *
+     * @throws \SoapFault
+     *
      * @return Result\LoginResult
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_login.htm
      */
@@ -124,6 +149,8 @@ interface ClientInterface
 
     /**
      * Ends the session of the logged-in user
+     *
+     * @throws \SoapFault
      *
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_logout.htm
      */
@@ -135,6 +162,8 @@ interface ClientInterface
      *
      * @param array  $mergeRequests Array of merge request objects
      * @param string $objectType    Object type, e.g., account or contact
+     *
+     * @throws \SoapFault
      *
      * @return Result\MergeResult[]
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_merge.htm
@@ -148,6 +177,8 @@ interface ClientInterface
      *
      * @param array $processRequests
      *
+     * @throws \BadMethodCallException
+     *
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_process.htm
      */
     public function process(array $processRequests);
@@ -156,6 +187,8 @@ interface ClientInterface
      * Query salesforce API and return results as record iterator
      *
      * @param string $query
+     *
+     * @throws \SoapFault
      *
      * @return Result\RecordIterator
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_query.htm
@@ -168,6 +201,8 @@ interface ClientInterface
      *
      * @param string $query
      *
+     * @throws \SoapFault
+     *
      * @return Result\QueryResult[]
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_queryall.htm
      */
@@ -177,6 +212,8 @@ interface ClientInterface
      * Retrieves the next batch of objects from a query
      *
      * @param string $queryLocator
+     *
+     * @throws \SoapFault
      *
      * @return Result\QueryResult
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_querymore.htm
@@ -190,6 +227,8 @@ interface ClientInterface
      * @param array  $ids        IDs of objects to retrieve
      * @param string $objectType Object type, e.g., account or contact
      *
+     * @throws \SoapFault
+     *
      * @return Result\SObject[]
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_retrieve.htm
      */
@@ -199,6 +238,8 @@ interface ClientInterface
      * Executes a text search in your organization’s data
      *
      * @param string $searchString
+     *
+     * @throws \SoapFault
      *
      * @return Result\SearchResult
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_search.htm
@@ -210,6 +251,9 @@ interface ClientInterface
      *
      * @param array $ids
      *
+     * @throws \SoapFault
+     * @throws SaveException
+     *
      * @return Result\UndeleteResult[]
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_undelete.htm
      */
@@ -220,6 +264,9 @@ interface ClientInterface
      *
      * @param array  $objects    Array of objects
      * @param string $objectType Object type, e.g., account or contact
+     *
+     * @throws \SoapFault
+     * @throws SaveException
      *
      * @return Result\SaveResult[]
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_update.htm
@@ -235,6 +282,8 @@ interface ClientInterface
      * @param array  $objects           Array of objects
      * @param string $objectType        Object type, e.g., account or contact
      *
+     * @throws \SoapFault
+     *
      * @return Result\UpsertResult[]
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_upsert.htm
      */
@@ -244,6 +293,8 @@ interface ClientInterface
      * Retrieves the current system timestamp (Coordinated Universal Time (UTC)
      * time zone) from the API
      *
+     * @throws \SoapFault
+     *
      * @return Result\GetServerTimestampResult
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_getservertimestamp.htm
      */
@@ -251,6 +302,8 @@ interface ClientInterface
 
     /**
      * Get user info
+     *
+     * @throws \SoapFault
      *
      * @return Result\GetUserInfoResult
      * @link http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_getuserinfo.htm
@@ -261,6 +314,8 @@ interface ClientInterface
      * Changes a user’s password to a temporary, system-generated value
      *
      * @param string $userId
+     *
+     * @throws \BadMethodCallException
      */
     public function resetPassword($userId);
 
@@ -268,6 +323,8 @@ interface ClientInterface
      * Immediately sends an email message
      *
      * @param array $emails
+     *
+     * @throws \SoapFault
      */
     public function sendEmail(array $emails);
 
@@ -276,6 +333,8 @@ interface ClientInterface
      *
      * @param string $userId   User id
      * @param string $password Password
+     *
+     * @throws \SoapFault
      */
     public function setPassword($userId, $password);
 }
