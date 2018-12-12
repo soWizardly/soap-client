@@ -29,6 +29,7 @@ class PartnerClient extends Client
                     $record->record = $this->formatSObject($record->record);
                 }
                 break;
+            case 'queryMore':
             case 'query':
                 /** @var QueryResult $results */
                 $records = $results->getRecords();
