@@ -49,6 +49,36 @@ class PartnerClient extends Client
         return $results;
     }
 
+    /**
+     * Create a Salesforce object
+     *
+     * @param object $object     Any object with public properties
+     * @param string $objectType Salesforce object type
+     *
+     * @return object
+     */
+    protected function createSObject($object, $objectType)
+    {
+        $sObject = new \stdClass();
+
+        foreach(get_object_vars($object) as $field => $value) {
+
+            //don't need the type field
+            if($field == 'type') {
+                continue;
+            }
+
+            if($value === null) {
+                $sObject->fieldsToNull[] = $field;
+                continue;
+            }
+
+            $sObject->$field = $value;
+        }
+
+        return $sObject;
+    }
+
     private function formatSObject(SObject $object)
     {
         foreach($object as $key => $value) {
@@ -82,7 +112,6 @@ class PartnerClient extends Client
         xml_parser_free($parser);
 
         $current = &$xml_array;
-
 
         if(!empty($xml_values)) {
             foreach($xml_values as $data) {
