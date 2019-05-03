@@ -49,46 +49,35 @@ class PartnerClient extends Client
         return $results;
     }
 
-    /**
-     * Create a Salesforce object
-     *
-     * @param object $object     Any object with public properties
-     * @param string $objectType Salesforce object type
-     *
-     * @return object
-     */
-    protected function createSObject($object, $objectType)
-    {
-        $sObject = new \stdClass();
-
-        foreach(get_object_vars($object) as $field => $value) {
-
-            //don't need the type field
-            if($field == 'type') {
-                continue;
-            }
-
-            if($value === null) {
-                $sObject->fieldsToNull[] = $field;
-                continue;
-            }
-
-            $sObject->$field = $value;
-        }
-
-        return $sObject;
-    }
-
     private function formatSObject(SObject $object)
     {
         foreach($object as $key => $value) {
-            if($key == 'Id' && is_array($value)) {
-                $object->Id = $value[0];
-            } elseif($key == 'any' && is_string($value)) {
-                $converted = $this->convertAny($value);
-                foreach($converted as $field => $field_val) {
-                    $object->$field = $field_val;
+            if($key == 'Id') {
+                if(is_array($value)) {
+                    $object->Id = $value[0];
+                } elseif(is_null($value)) {
+                    unset($object->Id);
                 }
+
+            } elseif($key == 'any') {
+                $converted = [];
+                if(is_string($value)) {
+                    $converted = $this->convertAny($value);
+                } elseif(is_array($value)) {
+                    foreach($value as $k => $set) {
+                        if(is_string($set)) {
+                            $converted = array_merge($converted, $this->convertAny($set));
+                        } elseif(is_object($set)) {
+                            $object->$k = $this->formatSObject($set);
+                        }
+                    }
+                }
+                if(is_array($converted)) {
+                    foreach($converted as $field => $field_val) {
+                        $object->$field = $field_val;
+                    }
+                }
+
                 unset($object->any);
             }
         }
@@ -165,10 +154,40 @@ class PartnerClient extends Client
             }
         }
 
-        if(is_array($xml_array['Object'])){
+        if(is_array($xml_array['Object'])) {
             return $xml_array['Object'];
         } else {
             return $xml_array;
         }
+    }
+
+    /**
+     * Create a Salesforce object
+     *
+     * @param object $object     Any object with public properties
+     * @param string $objectType Salesforce object type
+     *
+     * @return object
+     */
+    protected function createSObject($object, $objectType)
+    {
+        $sObject = new \stdClass();
+
+        foreach(get_object_vars($object) as $field => $value) {
+
+            //don't need the type field
+            if($field == 'type') {
+                continue;
+            }
+
+            if($value === null) {
+                $sObject->fieldsToNull[] = $field;
+                continue;
+            }
+
+            $sObject->$field = $value;
+        }
+
+        return $sObject;
     }
 }
