@@ -552,10 +552,12 @@ class Client extends AbstractHasDispatcher implements ClientInterface
      */
     public function queryMore($queryLocator)
     {
-        return $this->call(
+        $result = $this->call(
             'queryMore',
             array('queryLocator' => $queryLocator)
         );
+
+        return new Result\RecordIterator($this, $result);
     }
 
     /**
