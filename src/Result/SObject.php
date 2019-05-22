@@ -17,4 +17,19 @@ class SObject
     {
         return $this->Id;
     }
+
+    /**
+     * @param string $field
+     * @param null $default
+     *
+     * @return mixed
+     */
+    public function get($field, $default = null)
+    {
+        if(isset($this->$field)){
+            return $this->$field;
+        } else {
+            return $default;
+        }
+    }
 }

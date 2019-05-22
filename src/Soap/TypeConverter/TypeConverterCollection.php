@@ -9,7 +9,7 @@ use Doctrine\Common\Collections\ArrayCollection;
  */
 class TypeConverterCollection
 {
-    protected $converters = array();
+    protected $converters = [];
 
     /**
      * Construct type converter collection

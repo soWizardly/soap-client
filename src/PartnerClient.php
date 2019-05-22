@@ -68,7 +68,14 @@ class PartnerClient extends Client
                         if(is_string($set)) {
                             $converted = array_merge($converted, $this->convertAny($set));
                         } elseif(is_object($set)) {
-                            $object->$k = $this->formatSObject($set);
+                            if($set instanceof SObject) {
+                                $object->$k = $this->formatSObject($set);
+                            } else {
+                                foreach($set as $sk => $sv) {
+                                    $set->$sk = $this->maybeConvertValue($sv, $sk);
+                                }
+                                $object->$k = $set;
+                            }
                         }
                     }
                 }
@@ -79,6 +86,8 @@ class PartnerClient extends Client
                 }
 
                 unset($object->any);
+            } else {
+                $object->$key = $this->maybeConvertValue($value, $key);
             }
         }
 
@@ -159,6 +168,26 @@ class PartnerClient extends Client
         } else {
             return $xml_array;
         }
+    }
+
+    private function maybeConvertValue($value, $key = null)
+    {
+        $return = null;
+        if($value === 'true' || $value === 'false') {
+            //convert string boolean values to boolean
+            $return = $value === 'true' ? true : false;
+        } elseif(is_numeric($value) && stripos($key, 'postalcode') === false && stripos($key, 'phone') === false) {
+            //convert numbers to numeric values, unless it's a postal code or phone
+            if(strpos($value, '.') !== false) {
+                $return = floatval($value);
+            } else {
+                $return = intval($value);
+            }
+        } else {
+            $return = $value;
+        }
+
+        return $return;
     }
 
     /**
